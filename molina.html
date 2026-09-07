@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es" data-surgeon="MOLINA">
 <head>
-<meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1, viewport-fit=cover'><title>Agenda Cirugía</title>
+<meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1, viewport-fit=cover'><title>Agenda Cirugía · Molina</title>
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -146,8 +146,13 @@ h1{margin:8px 0;font-size:clamp(28px,5vw,42px);line-height:1.05}
 }
 </style>
 
-<link rel="manifest" href="./molina.webmanifest"><style>#offline-status{position:sticky;top:0;z-index:99;margin:0;padding:8px 14px;background:#fff3cd;color:#594500;font:14px/1.4 system-ui,sans-serif}#offline-status[hidden]{display:none}body{padding-bottom:env(safe-area-inset-bottom)}</style></head>
+<link rel="manifest" href="./molina.webmanifest"><style>#offline-status{position:sticky;top:0;z-index:99;margin:0;padding:8px 14px;background:#fff3cd;color:#594500;font:14px/1.4 system-ui,sans-serif}#offline-status[hidden]{display:none}body{padding-bottom:env(safe-area-inset-bottom)}</style><style>
+.qx-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:1100px;margin:10px auto;padding:0 16px;font:12px/1.4 system-ui,sans-serif;color:#54647a}
+.qx-tools button{border:1px solid #c9d4e2;border-radius:20px;padding:10px 14px;background:#fff;color:#123a7a;font:600 13px system-ui,sans-serif;white-space:nowrap;min-height:44px;cursor:pointer}
+.qx-tools button:disabled{opacity:.65;cursor:wait}.qx-search-label{display:block;margin-top:18px;font-weight:700;color:#123a7a}.qx-search{box-sizing:border-box;width:100%;font:16px system-ui,sans-serif;padding:12px;border:1px solid #c9d4e2;border-radius:12px;margin:8px 0 14px}.surgeon-card[hidden]{display:none}
+</style></head>
 <body><div id="offline-status" role="status" hidden></div>
+<div class="qx-tools"><span id="offline-ready" role="status">Preparando acceso sin conexión…</span><button id="refresh-agenda" type="button">Actualizar ahora</button></div>
 <input class="state-radio" type="radio" name="view" id="view-main" checked>
 <input class="state-radio" type="radio" name="view" id="view-service">
 <div class="app">
@@ -225,6 +230,7 @@ h1{margin:8px 0;font-size:clamp(28px,5vw,42px);line-height:1.05}
   let liveRecords = [];
   let selectedSurgeon = selectedSurgeonFromLocation();
   let selectedWeek = null;
+  let surgeonSearch = "";
 
   function normalizeSurgeonParam(value){
     const raw = String(value || document.documentElement.dataset.surgeon || "CALDERA").trim().toUpperCase();
@@ -484,6 +490,9 @@ h1{margin:8px 0;font-size:clamp(28px,5vw,42px);line-height:1.05}
           <h3 class="svc-subtitle" style="margin:0">Agenda por cirujano</h3>
           <a href="#servicio" style="text-decoration:none;font-size:12px;font-weight:900;color:#123a7a">↑ Menú</a>
         </div>
+        <label class="qx-search-label" for="surgeon-search">Buscar cirujano</label>
+        <input id="surgeon-search" class="qx-search" type="search" placeholder="Apellido o iniciales" autocomplete="off">
+        <p id="surgeon-search-empty" hidden>No hay cirujanos que coincidan.</p>
         <div class="surgeon-directory" id="liveSurgeonDirectory"></div>
       </section>
     </div>`;
@@ -529,6 +538,23 @@ h1{margin:8px 0;font-size:clamp(28px,5vw,42px);line-height:1.05}
       </article>`;
     }).join("");
 
+    const search=service.querySelector('#surgeon-search');
+    const normalizeSearch=value=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[.]/g,'').trim();
+    function filterSurgeons(){
+      surgeonSearch=search.value;
+      const terms=normalizeSearch(surgeonSearch).split(/\s+/).filter(Boolean);
+      let count=0;
+      dirRoot.querySelectorAll('.surgeon-card').forEach(card=>{
+        const name=normalizeSearch(card.querySelector('h3').textContent);
+        const matches=terms.every(term=>name.includes(term));
+        card.hidden=!matches;
+        if(matches) count++;
+      });
+      service.querySelector('#surgeon-search-empty').hidden=count>0;
+    }
+    search.value=surgeonSearch;
+    search.addEventListener('input',filterSurgeons);
+    filterSurgeons();
     renderDay();
   }
 
@@ -579,7 +605,7 @@ h1{margin:8px 0;font-size:clamp(28px,5vw,42px);line-height:1.05}
 </script>
 
 
-<script src="./qx-offline.js?v=3"></script>
+<script src="./qx-offline.js?v=4"></script>
 
 </body>
 </html>

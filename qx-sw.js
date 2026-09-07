@@ -1,9 +1,5 @@
-const CACHE = 'agenda-qx-shell-v3';
-const FILES = [
-  'qx.html','boada.html','molina.html','olivares.html','qx-offline.js?v=3',
-  'qx-icon-180.png','qx-icon-512.png',
-  'qx.webmanifest','boada.webmanifest','molina.webmanifest','olivares.webmanifest'
-].map(path => new URL(path, self.registration.scope).href);
+const CACHE = 'agenda-qx-shell-v4';
+const FILES = ["astudillo.html", "azua.html", "barraza.html", "boada.html", "qx.html", "dictter.html", "l-rodriguez.html", "m-alvarez.html", "m-rodriguez.html", "martinez.html", "miranda.html", "molina.html", "olivares.html", "oyarzun.html", "r-romero.html", "ramirez.html", "ramos.html", "rey.html", "romero.html", "salas.html", "tapia.html", "velasquez.html", "vicencio.html", "qx-offline.js?v=4", "qx-icon-180.png", "qx-icon-512.png", "astudillo.webmanifest", "azua.webmanifest", "barraza.webmanifest", "boada.webmanifest", "qx.webmanifest", "dictter.webmanifest", "l-rodriguez.webmanifest", "m-alvarez.webmanifest", "m-rodriguez.webmanifest", "martinez.webmanifest", "miranda.webmanifest", "molina.webmanifest", "olivares.webmanifest", "oyarzun.webmanifest", "r-romero.webmanifest", "ramirez.webmanifest", "ramos.webmanifest", "rey.webmanifest", "romero.webmanifest", "salas.webmanifest", "tapia.webmanifest", "velasquez.webmanifest", "vicencio.webmanifest"].map(path => new URL(path, self.registration.scope).href);
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(async cache => {
     await cache.addAll(FILES.map(url => new Request(url,{cache:'reload'})));

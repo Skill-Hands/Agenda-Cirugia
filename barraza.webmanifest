@@ -1,0 +1,1 @@
+{"id": "./barraza.html", "name": "Agenda Cirugía · Barraza", "short_name": "Agenda QX", "start_url": "./barraza.html", "scope": "./", "display": "standalone", "background_color": "#f4f7fb", "theme_color": "#123a7a", "icons": [{"src": "./qx-icon-180.png", "sizes": "180x180", "type": "image/png"}, {"src": "./qx-icon-512.png", "sizes": "512x512", "type": "image/png"}]}
