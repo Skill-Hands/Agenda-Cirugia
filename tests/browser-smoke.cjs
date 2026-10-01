@@ -15,9 +15,12 @@ const http=require('node:http'),fs=require('node:fs/promises'),path=require('nod
  try{
   const context=await browser.newContext(),page=await context.newPage(),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
+  page.on('console',m=>{if(m.type()==='error')console.log('Browser error:',m.text());});
+  page.on('requestfailed',r=>console.log('Request failed:',new URL(r.url()).hostname,r.failure()?.errorText));
+  page.on('response',r=>{if(r.url().includes('script.google'))console.log('Data response:',r.status(),r.headers()['content-type']);});
   await page.goto(origin+'/qx.html');
-  await page.waitForFunction(()=>{try{return JSON.parse(localStorage.getItem('agenda-qx-records-v1')||'null')?.payload?.records?.length>0;}catch{return false;}},{timeout:45000});
-  await page.waitForFunction(()=>document.getElementById('offline-ready')?.textContent.includes('Disponible sin conexión'),{timeout:30000});
+  await page.waitForFunction(()=>{try{return JSON.parse(localStorage.getItem('agenda-qx-records-v1')||'null')?.payload?.records?.length>0;}catch{return false;}},undefined,{timeout:45000});
+  await page.waitForFunction(()=>document.getElementById('offline-ready')?.textContent.includes('Disponible sin conexión'),undefined,{timeout:30000});
   await page.evaluate(()=>navigator.serviceWorker.ready.then(()=>navigator.serviceWorker.controller?true:new Promise(resolve=>navigator.serviceWorker.addEventListener('controllerchange',()=>resolve(true),{once:true}))));
   assert.deepEqual(errors,[]);
   const count=await page.evaluate(()=>JSON.parse(localStorage.getItem('agenda-qx-records-v1')).payload.records.length);
