@@ -1,0 +1,21 @@
+name: Agenda checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --check qx-model.js
+      - run: node --check qx-app.js
+      - run: node --check qx-offline.js
+      - run: node --check qx-sw.js
+      - run: node --test tests/*.test.cjs
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Live agenda and offline browser smoke
+        run: node tests/browser-smoke.cjs

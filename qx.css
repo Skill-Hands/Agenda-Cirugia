@@ -1,0 +1,140 @@
+
+:root{--bg:#f4f7fb;--card:#fff;--ink:#11203b;--muted:#66758c;--navy:#123a7a;--teal:#0e8b92;--green:#4f9f49;--orange:#eb6b34;--amber:#f2b54a;--entrega:#b0b7c3;--shadow:0 12px 30px rgba(17,32,59,.08);--radius:24px}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#edf3ff 0%,#f7f9fc 40%,#f4f7fb 100%);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;color:var(--ink)}
+.wrap{max-width:1200px;margin:0 auto;padding:18px 16px 30px}
+.hero{background:linear-gradient(135deg,#0d2f68 0%,#1650a0 55%,#0e8b92 100%);color:#fff;border-radius:32px;padding:24px;box-shadow:0 18px 40px rgba(13,47,104,.22)}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.8;font-weight:700}
+h1{margin:8px 0;font-size:clamp(28px,5vw,42px);line-height:1.05}
+.hero p{margin:0;opacity:.92;max-width:780px;line-height:1.4}
+.meta{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
+.pill{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);padding:10px 14px;border-radius:999px;font-size:14px}
+.week-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.week-tab{appearance:none;border:1px solid rgba(255,255,255,.26);background:rgba(255,255,255,.12);color:#fff;border-radius:999px;padding:10px 14px;font-weight:900;cursor:pointer}
+.week-tab.active{background:#fff;color:#123a7a;border-color:#fff;box-shadow:0 8px 18px rgba(0,0,0,.12)}
+.card{background:var(--card);border-radius:22px;padding:18px;box-shadow:var(--shadow)}
+.grid{display:grid;grid-template-columns:1.6fr .95fr;gap:18px;margin-top:18px}
+.card h2{margin:0 0 4px;font-size:22px;color:var(--navy)}
+.sub{margin:0 0 16px;color:var(--muted);font-size:14px}
+.days{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.day{border:1px solid #e9eef5;border-radius:20px;padding:16px;background:#fcfdff}
+.day.full{grid-column:1 / -1}
+.day h3{margin:0;font-size:18px}
+.day-sub{margin:4px 0 12px;color:var(--muted);font-size:13px}
+.block{display:grid;grid-template-columns:118px 1fr;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid #edf2f7}
+.block:first-of-type{border-top:none;padding-top:0}
+.block.afternoon-start{border-top:3px solid var(--amber);margin-top:8px;padding-top:14px}
+.time{font-weight:800;font-size:13px;color:#44546d}
+.badge{display:inline-block;padding:7px 12px;border-radius:999px;font-size:13px;font-weight:800;color:#fff}
+.pabellon{background:var(--navy)}
+.sala{background:var(--teal)}
+.policlinico{background:var(--green)}
+.urgencia{background:var(--orange)}
+.entrega{background:var(--entrega);color:#223046}
+.detail{margin-top:6px;color:var(--muted);font-size:13px;font-weight:600}
+.bar-row{display:grid;grid-template-columns:120px 1fr 22px;gap:10px;align-items:center;margin:12px 0;font-size:14px}
+.track{height:12px;border-radius:999px;background:#edf1f5;overflow:hidden}
+.fill{height:100%;border-radius:999px}
+.legend{display:grid;gap:10px;margin-top:12px}
+.legend-item{display:flex;align-items:center;gap:10px;color:#44546d;font-size:14px}
+.dot{width:12px;height:12px;border-radius:50%}
+.footer{margin-top:18px;text-align:center;color:var(--muted);font-size:13px}
+@media (max-width: 900px){.grid,.days{grid-template-columns:1fr}.day.full{grid-column:auto}}
+
+
+.day.hoy{
+  border:2px solid #f2b54a;
+  box-shadow:0 0 0 4px rgba(242,181,74,.14),0 12px 30px rgba(17,32,59,.08);
+  background:linear-gradient(180deg,#fff9df 0%,#fcfdff 70%);
+}
+.day.hoy h3::after{
+  content:"HOY";
+  display:inline-block;
+  margin-left:8px;
+  padding:3px 7px;
+  border-radius:999px;
+  background:#f2b54a;
+  color:#5f4300;
+  font-size:10px;
+  font-weight:900;
+  vertical-align:middle;
+}
+
+
+/* Two views inside one file: no navigation between external files. */
+.state-radio,.day-radio{position:absolute;opacity:0;pointer-events:none}
+#servicio{display:none}
+#principal{display:block}
+#view-service:checked ~ .app #servicio{display:block}
+#view-service:checked ~ .app #principal{display:none}
+.open-service,.back-main{display:inline-block;cursor:pointer;border-radius:999px;font-weight:900;text-decoration:none}
+.open-service{background:#fff;color:#123a7a;padding:10px 14px}
+.back-main{color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);padding:9px 12px;font-size:13px}
+.back-main{margin-top:0}
+.svc-quicknav{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.svc-jump{display:inline-block;text-decoration:none;cursor:pointer;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);padding:9px 12px;border-radius:999px;font-weight:800;font-size:13px}
+.svc-jump:hover,.back-main:hover{background:rgba(255,255,255,.22)}
+#plan-dia,#plan-cirujano{scroll-margin-top:18px}
+
+
+#servicio{min-height:100vh;background:linear-gradient(180deg,#edf3ff 0%,#f7f9fc 42%,#f4f7fb 100%);padding:16px}
+.svc-wrap{max-width:1120px;margin:0 auto}
+.svc-hero{background:linear-gradient(135deg,#0d2f68,#1650a0 58%,#0e8b92);color:#fff;border-radius:28px;padding:22px;box-shadow:0 18px 40px rgba(13,47,104,.22)}
+.svc-hero h1{margin:12px 0 4px;font-size:clamp(28px,6vw,42px)} .svc-hero p{margin:0;opacity:.92}
+.week-pill{display:inline-block;margin-top:14px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);padding:9px 12px;border-radius:999px;font-size:13px;font-weight:800}
+.svc-week-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.svc-week-tabs .week-tab{font-size:13px;padding:9px 12px}
+.svc-card{background:#fff;border-radius:22px;padding:18px;box-shadow:0 12px 30px rgba(17,32,59,.08);margin-top:16px}
+.day-buttons{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:0 0 14px}
+.day-btn{text-align:center;padding:12px 6px;border:1px solid #dfe6ef;background:#fbfcfe;border-radius:14px;font-weight:900;color:#33445f;cursor:pointer}
+.day-panel{display:none}
+#day-0:checked ~ .day-buttons label[for='day-0']{background:#123a7a;color:#fff;border-color:#123a7a;box-shadow:0 5px 14px rgba(18,58,122,.18)}#day-0:checked ~ .day-panels .day-panel:nth-child(1){display:block}#day-1:checked ~ .day-buttons label[for='day-1']{background:#123a7a;color:#fff;border-color:#123a7a;box-shadow:0 5px 14px rgba(18,58,122,.18)}#day-1:checked ~ .day-panels .day-panel:nth-child(2){display:block}#day-2:checked ~ .day-buttons label[for='day-2']{background:#123a7a;color:#fff;border-color:#123a7a;box-shadow:0 5px 14px rgba(18,58,122,.18)}#day-2:checked ~ .day-panels .day-panel:nth-child(3){display:block}#day-3:checked ~ .day-buttons label[for='day-3']{background:#123a7a;color:#fff;border-color:#123a7a;box-shadow:0 5px 14px rgba(18,58,122,.18)}#day-3:checked ~ .day-panels .day-panel:nth-child(4){display:block}#day-4:checked ~ .day-buttons label[for='day-4']{background:#123a7a;color:#fff;border-color:#123a7a;box-shadow:0 5px 14px rgba(18,58,122,.18)}#day-4:checked ~ .day-panels .day-panel:nth-child(5){display:block}
+
+.svc-day-title{font-size:24px;font-weight:900;color:#123a7a;margin:4px 0 14px}
+.category-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.category-card{border:1px solid #e7edf4;border-radius:17px;background:#fcfdff;overflow:hidden}
+.category-title{display:flex;justify-content:space-between;align-items:center;padding:13px 14px;font-weight:900;color:#123a7a;border-bottom:1px solid #edf2f7}
+.category-title b{min-width:28px;text-align:center;padding:3px 8px;border-radius:999px;background:#eef3f8;font-size:12px}
+.category-people{padding:6px 12px 12px}
+.cat-person{display:flex;flex-direction:column;gap:3px;padding:10px 2px;border-top:1px solid #edf2f7}
+.cat-person:first-child{border-top:0}
+.cat-person strong{font-size:14px;color:#11203b}
+.cat-person span{font-size:12px;color:#66758c;line-height:1.35}
+
+.svc-subtitle{color:#123a7a;font-size:18px;margin:20px 0 10px}
+.svc-results{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.svc-person{border:1px solid #e8edf4;background:#fcfdff;border-radius:17px;padding:14px}
+.svc-name{font-size:17px;font-weight:900;color:#123a7a}
+.svc-meta{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.svc-chip{padding:6px 9px;border-radius:999px;background:#eef3f8;font-size:12px;font-weight:800;color:#33445f}
+.svc-chip.a-sala{background:rgba(14,139,146,.12);color:#08747a}
+.svc-chip.a-pabellon{background:rgba(18,58,122,.11);color:#123a7a}
+.svc-chip.a-policlinico{background:rgba(79,159,73,.12);color:#3a7c36}
+.svc-chip.a-urgencia{background:rgba(235,107,52,.12);color:#b94e21}
+.svc-chip.a-entrega{background:#edf0f4;color:#576477}
+.svc-chip.a-residencia{background:#f1ebff;color:#6941a5}
+.svc-none{padding:12px 2px;color:#66758c;font-size:13px}
+
+.surgeon-picker{margin-top:18px;border:1px solid #dfe6ef;border-radius:17px;background:#fff}
+.surgeon-picker summary{cursor:pointer;padding:14px 15px;font-weight:900;color:#123a7a}
+.surgeon-links{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 14px 14px}
+.surgeon-links a{text-decoration:none;color:#123a7a;background:#eef3f8;padding:10px;border-radius:12px;font-weight:800;font-size:13px}
+.surgeon-directory{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}
+.surgeon-card{scroll-margin-top:18px;border:1px solid #e8edf4;background:#fff;border-radius:18px;padding:15px}
+.surgeon-card h3{margin:0 0 8px;color:#123a7a}
+.surgeon-day{padding:10px 0;border-top:1px solid #edf2f7}
+.surgeon-day:first-of-type{border-top:0}
+
+@media(max-width:760px){
+ .day-buttons{grid-template-columns:repeat(5,minmax(64px,1fr));overflow-x:auto}
+ .category-grid,.svc-results,.surgeon-directory{grid-template-columns:1fr}
+ .surgeon-links{grid-template-columns:1fr 1fr}
+}
+
+#offline-status{position:sticky;top:0;z-index:99;margin:0;padding:8px 14px;background:#fff3cd;color:#594500;font:14px/1.4 system-ui,sans-serif}#offline-status[hidden]{display:none}body{padding-bottom:env(safe-area-inset-bottom)}
+
+.qx-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:1100px;margin:10px auto;padding:0 16px;font:12px/1.4 system-ui,sans-serif;color:#54647a}
+.qx-tools button{border:1px solid #c9d4e2;border-radius:20px;padding:10px 14px;background:#fff;color:#123a7a;font:600 13px system-ui,sans-serif;white-space:nowrap;min-height:44px;cursor:pointer}
+.qx-tools button:disabled{opacity:.65;cursor:wait}.qx-search-label{display:block;margin-top:18px;font-weight:700;color:#123a7a}.qx-search{box-sizing:border-box;width:100%;font:16px system-ui,sans-serif;padding:12px;border:1px solid #c9d4e2;border-radius:12px;margin:8px 0 14px}.surgeon-card[hidden]{display:none}
+
+#agenda-conflicts{padding:12px 16px;background:#fff3cd;color:#594500;border-radius:12px;font:14px/1.5 system-ui;}#agenda-conflicts[hidden]{display:none}
