@@ -5,7 +5,7 @@
   const readyLabel = document.getElementById('offline-ready');
   const refreshButton = document.getElementById('refresh-agenda');
   let shellReady = false, dataSaved = false, shellFailed = false;
-  let saved = null, script = null, timer = null, busy = false, lastAttempt = 0;
+  let saved = null, controller = null, timer = null, busy = false, lastAttempt = 0;
   function updateReady() {
     if (!readyLabel) return;
     readyLabel.textContent = shellReady && dataSaved ? '✓ Disponible sin conexión' :
@@ -15,11 +15,12 @@
   }
   async function checkShell() {
     try {
-      const cache = await caches.open('agenda-qx-shell-v4');
+      const cache = await caches.open('agenda-qx-shell-v5');
       const page = new URL(location.pathname, location.origin).href;
-      const assets = [page, new URL('./qx-offline.js?v=4',location.href).href,
+      const assets = [page, new URL('./qx-offline.js?v=5',location.href).href,
         new URL('./qx-icon-180.png',location.href).href,
-        document.querySelector('link[rel="manifest"]').href];
+        document.querySelector('link[rel="manifest"]').href,
+        new URL('./qx-model.js?v=5',location.href).href,new URL('./qx-app.js?v=5',location.href).href, new URL('./qx.css?v=5',location.href).href];
       shellReady = (await Promise.all(assets.map(url=>cache.match(url)))).every(Boolean);
       if (shellReady) shellFailed=false;
       updateReady();
@@ -32,7 +33,8 @@
   }
   function show(text) { banner.textContent = text; banner.hidden = !text; }
   function storedMessage(prefix) {
-    return saved ? prefix + ' · Guardada ' + new Date(saved.savedAt).toLocaleString('es-CL') :
+    const old = saved && Date.now() - saved.savedAt > 24 * 60 * 60 * 1000;
+    return saved ? prefix + (old ? ' · Atención: copia de más de 24 horas' : '') + ' · Guardada ' + new Date(saved.savedAt).toLocaleString('es-CL') :
       'Sin agenda guardada. Conéctate a internet para descargarla por primera vez.';
   }
   function render(data) {
@@ -50,7 +52,7 @@
     }
   } catch {}
   function cleanup() {
-    clearTimeout(timer); script?.remove(); script = null; busy = false;
+    clearTimeout(timer); controller?.abort(); controller = null; busy = false;
     if(refreshButton) { refreshButton.disabled=false; refreshButton.textContent='Actualizar ahora'; }
   }
   function failed() {
@@ -81,16 +83,28 @@
     }
     updateReady();
   };
-  function refresh() {
+  async function refresh() {
     if (busy) return;
     if (!navigator.onLine) { if (!saved) failed(); show(storedMessage('Sin conexión')); return; }
     busy = true; lastAttempt = Date.now();
     if(refreshButton) { refreshButton.disabled=true; refreshButton.textContent='Actualizando…'; }
-    script = document.createElement('script');
-    script.src = endpoint + '?format=qxdata&t=' + lastAttempt;
-    script.onerror = failed;
-    timer = setTimeout(failed, 20000);
-    document.head.appendChild(script);
+    controller = new AbortController();
+    const requestController = controller;
+    timer = setTimeout(() => requestController.abort(), 20000);
+    try {
+      const response = await fetch(endpoint + '?format=qxdata&t=' + lastAttempt, {
+        cache: 'no-store', credentials: 'omit', signal: requestController.signal
+      });
+      if (!response.ok) throw new Error('No se pudo descargar la agenda');
+      const text = await response.text();
+      if (text.length > 2000000) throw new Error('Agenda demasiado grande');
+      // Accept JSON or the legacy JSONP envelope strictly as data. Never execute it.
+      const payload = window.AgendaModel.parsePayload(text);
+      if (controller !== requestController) return;
+      window.agendaQxData(payload);
+    } catch (_) {
+      if (controller === requestController) failed();
+    }
   }
   window.addEventListener('online', refresh);
   refreshButton?.addEventListener('click', () => { checkShell(); refresh(); });
