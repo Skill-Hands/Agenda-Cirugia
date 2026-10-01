@@ -15,3 +15,7 @@ jobs:
       - run: node --check qx-offline.js
       - run: node --check qx-sw.js
       - run: node --test tests/*.test.cjs
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Live agenda and offline browser smoke
+        run: node tests/browser-smoke.cjs
