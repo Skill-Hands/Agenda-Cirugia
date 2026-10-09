@@ -1,0 +1,43 @@
+# PROPUESTA: no se ejecutará por horario hasta ser fusionado con main.
+name: Vigilancia diaria Agenda Cirugia (lectura)
+on:
+  schedule:
+    - cron: '12 5 * * *'
+      timezone: 'America/Sao_Paulo'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Disponibilidad HTTP pública sin descargar contenido
+        shell: bash
+        run: |
+          set -eu
+          url='https://agenda-servicio-cirugia-l9tva9.v2.appdeploy.ai/'
+          for intento in 1 2; do
+            resultado="$(curl -sS --proto '=https' --connect-timeout 5 --max-time 12 --max-redirs 0 -o /dev/null -w '%{http_code} %{time_total}' "$url" || true)"
+            echo "Agenda HTTP intento ${intento}: ${resultado} (no confirma flujos por cirujano)"
+            [[ "$resultado" == 2* ]] && break
+            sleep 1
+          done
+          if [[ "$resultado" != 2* ]]; then
+            echo "::warning::Comprobación no satisfactoria; confirmar con otra fuente antes de declarar una caída."
+            exit 1
+          fi
+          echo 'HTTP 401/403/429 o errores de red requieren revisión independiente; no indican caída confirmada.'
+      - name: Sintaxis JavaScript selectiva los lunes
+        shell: bash
+        run: |
+          if [[ "$(TZ=America/Sao_Paulo date +%u)" == '1' ]]; then
+            for ruta in qx-app.js qx-model.js qx-offline.js qx-sw.js; do
+              node --check "$ruta"
+              echo "Sintaxis válida: $ruta"
+            done
+          else
+            echo 'Chequeo semanal reservado para lunes'
+          fi
