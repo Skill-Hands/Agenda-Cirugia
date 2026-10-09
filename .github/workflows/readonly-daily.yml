@@ -25,6 +25,10 @@ jobs:
             [[ "$resultado" == 2* ]] && break
             sleep 1
           done
+          if [[ "$resultado" != 2* ]]; then
+            echo "::warning::Comprobación no satisfactoria; confirmar con otra fuente antes de declarar una caída."
+            exit 1
+          fi
           echo 'HTTP 401/403/429 o errores de red requieren revisión independiente; no indican caída confirmada.'
       - name: Sintaxis JavaScript selectiva los lunes
         shell: bash
