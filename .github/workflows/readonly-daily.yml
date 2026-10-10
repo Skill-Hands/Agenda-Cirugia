@@ -1,5 +1,5 @@
-# PROPUESTA: no se ejecutará por horario hasta ser fusionado con main.
-name: Vigilancia diaria Agenda Cirugia (lectura)
+# Vigilancia remota sin datos personales; lectura HTTP publica.
+name: Vigilancia diaria Agenda Cirugia y Mi Peso (lectura)
 on:
   schedule:
     - cron: '12 5 * * *'
@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - name: Disponibilidad HTTP pública sin descargar contenido
@@ -30,6 +30,35 @@ jobs:
             exit 1
           fi
           echo 'HTTP 401/403/429 o errores de red requieren revisión independiente; no indican caída confirmada.'
+
+      - name: Mi Peso — endpoints publicos (sin autenticacion)
+        shell: bash
+        run: |
+          set -euo pipefail
+          verificar_publico() {
+            local nombre="$1" url="$2" intento resultado codigo tiempo
+            for intento in 1 2; do
+              resultado="$(curl -sS --proto '=https' --connect-timeout 6 --max-time 14 --max-redirs 0 -o /dev/null -w '%{http_code} %{time_total}' "$url" || true)"
+              codigo="${resultado%% *}"
+              tiempo="${resultado#* }"
+              echo "$nombre, intento $intento: HTTP $codigo, ${tiempo}s"
+              case "$codigo" in
+                200|301|302|303|307|308)
+                  echo "$nombre: respuesta HTTPS publica obtenida"
+                  return 0
+                  ;;
+                401|403|429)
+                  echo "::warning::$nombre: acceso protegido o limitado, comprobacion inconclusa; NO es caida confirmada"
+                  return 0
+                  ;;
+              esac
+              sleep 2
+            done
+            echo "::error::$nombre: fallo persistente desde runner; requiere corroboracion independiente"
+            return 1
+          }
+          verificar_publico "Mi Peso personal" "https://seguimiento-peso.vercel.app/mi-peso"
+          verificar_publico "Mi Peso acceso" "https://mi-peso-acceso.vercel.app/"
       - name: Sintaxis JavaScript selectiva los lunes
         shell: bash
         run: |
