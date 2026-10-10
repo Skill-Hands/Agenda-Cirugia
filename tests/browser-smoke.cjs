@@ -30,9 +30,11 @@ const row=(surgeon,date='2026-10-12',week=42)=>({week,date,day:'Lunes',surgeon,c
      headers:{'access-control-allow-origin':'*'},body:JSON.stringify(payload)}));
     await context.route('**/*',route=>{const url=new URL(route.request().url());return url.origin===origin||url.hostname==='script.google.com'?route.fallback():route.abort();});
     page.on('pageerror',e=>errors.push(e.message));
+    page.on('console',message=>console.log(engine.name()+': '+message.type()+': '+message.text()));
+    const stage=async(label,operation)=>{try{await operation();console.log(engine.name()+': '+label+' passed');}catch(error){console.log(await page.evaluate(async()=>({title:document.querySelector('#principal .hero h1')?.textContent,ready:document.getElementById('offline-ready')?.textContent,status:document.getElementById('offline-status')?.textContent,keys:await caches.keys()})));throw new Error(label+': '+error.message+'; page errors: '+errors.join('; '));}};
     await page.goto(origin+'/qx.html?s=SINTETICO_B');
-    await page.waitForFunction(()=>document.querySelector('#principal .hero h1')?.textContent.includes('Sintetico_a'));
-    await page.waitForFunction(()=>document.getElementById('offline-ready')?.textContent.includes('Disponible sin conexión'));
+    await stage('professional identity',()=>page.waitForFunction(()=>document.querySelector('#principal .hero h1')?.textContent.includes('Sintetico_a')));
+    await stage('offline readiness',()=>page.waitForFunction(()=>document.getElementById('offline-ready')?.textContent.includes('Disponible sin conexión')));
     await page.evaluate(()=>navigator.serviceWorker.ready.then(()=>navigator.serviceWorker.controller?true:new Promise(resolve=>navigator.serviceWorker.addEventListener('controllerchange',()=>resolve(true),{once:true}))));
     payload={ok:true,records:[]};
     await page.locator('#refresh-agenda').click();
