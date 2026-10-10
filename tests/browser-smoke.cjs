@@ -1,6 +1,6 @@
 const {chromium,webkit}=require('playwright');
 const http=require('node:http'),fs=require('node:fs/promises'),path=require('node:path'),assert=require('node:assert/strict');
-const fixturePage=surgeon=>`<!doctype html><html lang="es" data-surgeon="${surgeon}"><head>
+const fixturePage=surgeon=>`<!doctype html><html lang="es" data-surgeon="${surgeon}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><link rel="manifest" href="./qx.webmanifest">
 <link rel="stylesheet" href="./qx.css?v=5"></head><body>
 <div id="offline-status" hidden></div><span id="offline-ready"></span><button id="refresh-agenda">Actualizar</button><span id="load-status"></span>
@@ -12,10 +12,10 @@ const row=(surgeon,date='2026-10-12',week=42)=>({week,date,day:'Lunes',surgeon,c
  const server=http.createServer(async(req,res)=>{
   try{
    const pathname=new URL(req.url,'http://localhost').pathname;
-   if(pathname.endsWith('.html')){res.setHeader('Content-Type','text/html');return res.end(fixturePage(pathname==='/qx.html'?'SINTETICO_A':'SINTETICO_B'));}
-   if(pathname.endsWith('.webmanifest')){res.setHeader('Content-Type','application/manifest+json');return res.end(JSON.stringify({id:pathname,start_url:pathname.replace('.webmanifest','.html'),scope:'./',name:'Agenda sintética',display:'standalone'}));}
+   if(pathname.endsWith('.html')){res.setHeader('Content-Type','text/html; charset=utf-8');return res.end(fixturePage(pathname==='/qx.html'?'SINTETICO_A':'SINTETICO_B'));}
+   if(pathname.endsWith('.webmanifest')){res.setHeader('Content-Type','application/manifest+json; charset=utf-8');return res.end(JSON.stringify({id:pathname,start_url:pathname.replace('.webmanifest','.html'),scope:'./',name:'Agenda sintética',display:'standalone'}));}
    const file=path.resolve(root,'.'+pathname);if(!file.startsWith(root+path.sep))throw Error('path');
-   res.setHeader('Content-Type',types[path.extname(file)]||'application/octet-stream');res.end(await fs.readFile(file));
+   res.setHeader('Content-Type',(types[path.extname(file)]||'application/octet-stream')+(path.extname(file)==='.png'?'':'; charset=utf-8'));res.end(await fs.readFile(file));
   }catch{res.statusCode=404;res.end('Not found');}
  });
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
