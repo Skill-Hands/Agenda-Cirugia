@@ -11,5 +11,8 @@ Base: 44952f5819995eefa9be8e1c6bf9608350c26a15.
 - Prueba de navegador con datos y HTML sintéticos, sin consultar agendas reales; preparada para Chromium y WebKit.
 
 Ejecutado en aislado JavaScript: seis casos de modelo, compilación del JavaScript modificado.
-La prueba Playwright debe ejecutarse en CI antes de integrar. No se ha modificado GitHub Pages ni AppDeploy.
+Prueba Playwright ejecutada y aprobada en Chromium y WebKit con HTML y endpoint local sintéticos. Se comprobaron identidad profesional, agenda vacía, semana reemplazada y reapertura offline de dos páginas profesionales.
+Evidencia: https://github.com/Skill-Hands/Agenda-Cirugia/actions/runs/38062651228
+Commit de código probado: c8f09564306869eb940c8349616c5f73e3d0f8ad.
+Una ejecución anterior de WebKit eludió la interceptación y consultó el endpoint real; no hizo escrituras. Se sustituyó el endpoint servido por uno local y la ejecución final utiliza solamente fixtures. No se ha modificado GitHub Pages ni AppDeploy.
 Reversión: revertir commits y avanzar el identificador de caché si fuera necesario distribuir la reversión.
