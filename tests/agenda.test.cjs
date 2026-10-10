@@ -18,3 +18,23 @@ test('only overlapping explicit time ranges produce conflicts',()=>{
  assert.equal(interval('25-26'),null);
  assert.deepEqual(interval('8.30-10.15'),{start:510,end:615});
 });
+
+test('empty agenda is valid, invalid dates and weeks are rejected',()=>{
+ const {validPayload,validDate}=require('../qx-model.js');
+ const row={week:1,date:'2026-01-02',day:'Viernes',surgeon:'A',category:'Sala',activity:'8-10'};
+ assert.equal(validPayload({ok:true,records:[]}),true);
+ assert.equal(validDate('2026-02-30'),false);
+ assert.equal(validPayload({ok:true,records:[{...row,week:0}]}),false);
+ assert.equal(validPayload({ok:true,records:[{...row,date:'2026-02-30'}]}),false);
+ assert.equal(validPayload({ok:true,records:[row]}),true);
+});
+test('week identity separates years and preserves a week spanning New Year',()=>{
+ const {weekKey}=require('../qx-model.js');
+ assert.notEqual(weekKey({date:'2026-01-02'}),weekKey({date:'2027-01-08'}));
+ assert.equal(weekKey({date:'2026-12-31'}),weekKey({date:'2027-01-01'}));
+});
+test('dedicated professional identity overrides external selection',()=>{
+ const {fixedSurgeon}=require('../qx-model.js');
+ assert.equal(fixedSurgeon('SINTETICO_A','SINTETICO_B'),'SINTETICO_A');
+ assert.equal(fixedSurgeon(null,'SINTETICO_B'),'SINTETICO_B');
+});
