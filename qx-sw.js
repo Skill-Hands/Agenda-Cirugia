@@ -33,7 +33,12 @@ self.addEventListener('fetch', event => {
     const cached = await cache.match(known);
     if (cached) return cached;
     const response=await fetch(event.request);
-    if(response.ok&&!response.redirected)await cache.put(known,response.clone());
+    if(response.ok&&!response.redirected){
+      await cache.put(known,response.clone());
+      if(new URL(known).pathname.endsWith('.html')){
+        await cache.add(new Request(known.replace(/\.html$/,'.webmanifest'),{cache:'reload'})).catch(()=>null);
+      }
+    }
     return response;
   })());
 });
