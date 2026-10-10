@@ -1,7 +1,7 @@
 const {chromium,webkit}=require('playwright');
 const http=require('node:http'),fs=require('node:fs/promises'),path=require('node:path'),assert=require('node:assert/strict');
-const fixturePage=surgeon=>`<!doctype html><html lang="es" data-surgeon="${surgeon}"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="manifest" href="./qx.webmanifest">
+const fixturePage=(surgeon,manifest='qx.webmanifest')=>`<!doctype html><html lang="es" data-surgeon="${surgeon}"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="manifest" href="./${manifest}">
 <link rel="stylesheet" href="./qx.css?v=5"></head><body>
 <div id="offline-status" hidden></div><span id="offline-ready"></span><button id="refresh-agenda">Actualizar</button><span id="load-status"></span>
 <section id="principal"><header class="hero"><h1></h1><div class="meta"><span class="pill"></span></div></header><div class="card"><div class="days"></div></div><div class="card"></div></section>
@@ -12,7 +12,7 @@ const row=(surgeon,date='2026-10-12',week=42)=>({week,date,day:'Lunes',surgeon,c
  const server=http.createServer(async(req,res)=>{
   try{
    const pathname=new URL(req.url,'http://localhost').pathname;
-   if(pathname.endsWith('.html')){res.setHeader('Content-Type','text/html; charset=utf-8');return res.end(fixturePage(pathname==='/qx.html'?'SINTETICO_A':'SINTETICO_B'));}
+   if(pathname.endsWith('.html')){res.setHeader('Content-Type','text/html; charset=utf-8');return res.end(fixturePage(pathname==='/qx.html'?'SINTETICO_A':'SINTETICO_B',pathname.slice(1).replace('.html','.webmanifest')));}
    if(pathname.endsWith('.webmanifest')){res.setHeader('Content-Type','application/manifest+json; charset=utf-8');return res.end(JSON.stringify({id:pathname,start_url:pathname.replace('.webmanifest','.html'),scope:'./',name:'Agenda sintética',display:'standalone'}));}
    const file=path.resolve(root,'.'+pathname);if(!file.startsWith(root+path.sep))throw Error('path');
    res.setHeader('Content-Type',(types[path.extname(file)]||'application/octet-stream')+(path.extname(file)==='.png'?'':'; charset=utf-8'));res.end(await fs.readFile(file));
@@ -35,7 +35,7 @@ const row=(surgeon,date='2026-10-12',week=42)=>({week,date,day:'Lunes',surgeon,c
     await page.goto(origin+'/qx.html?s=SINTETICO_B');
     await stage('professional identity',()=>page.waitForFunction(()=>document.querySelector('#principal .hero h1')?.textContent.includes('Sintetico_a')));
     await stage('offline readiness',()=>page.waitForFunction(()=>document.getElementById('offline-ready')?.textContent.includes('Disponible sin conexión')));
-    await page.evaluate(()=>navigator.serviceWorker.ready.then(()=>navigator.serviceWorker.controller?true:new Promise(resolve=>navigator.serviceWorker.addEventListener('controllerchange',()=>resolve(true),{once:true}))));
+    await stage('service worker control',()=>page.waitForFunction(()=>Boolean(navigator.serviceWorker.controller)));
     payload={ok:true,records:[]};
     await page.locator('#refresh-agenda').click();
     await stage('empty agenda',()=>page.waitForFunction(()=>JSON.parse(localStorage.getItem('agenda-qx-records-v1')).payload.records.length===0));
@@ -46,6 +46,14 @@ const row=(surgeon,date='2026-10-12',week=42)=>({week,date,day:'Lunes',surgeon,c
     await context.setOffline(true);await page.reload();
     await stage('offline reopen',()=>page.waitForFunction(()=>document.getElementById('offline-status')?.textContent.includes('Sin conexión')));
     assert.equal(await page.locator('#principal .day').getAttribute('data-date'),'2027-01-08');
+    await context.setOffline(false);
+    payload={ok:true,records:[row('SINTETICO_A','2027-01-08',1),row('SINTETICO_B','2027-01-08',1)]};
+    const colleague=await context.newPage();colleague.on('pageerror',e=>errors.push(e.message));
+    await colleague.goto(origin+'/astudillo.html?s=SINTETICO_A');
+    await colleague.waitForFunction(()=>document.querySelector('#principal .hero h1')?.textContent.includes('Sintetico_b'));
+    await colleague.waitForFunction(()=>document.getElementById('offline-ready')?.textContent.includes('Disponible sin conexión'));
+    await context.setOffline(true);await colleague.reload();
+    await colleague.waitForFunction(()=>document.querySelector('#principal .hero h1')?.textContent.includes('Sintetico_b'));
     assert.deepEqual(errors,[]);
     await context.close();
     console.log(engine.name()+': fixtures, professional identity, empty agenda, replaced week and offline passed.');
