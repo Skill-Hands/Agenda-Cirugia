@@ -28,7 +28,7 @@
   let surgeonSearch = "";
 
   function normalizeSurgeonParam(value){
-    const raw = String(value || document.documentElement.dataset.surgeon || "CALDERA").trim().toUpperCase();
+    const raw = window.AgendaModel.fixedSurgeon(document.documentElement.dataset.surgeon, value);
     if(!raw) return "CALDERA";
     return raw;
   }
@@ -38,7 +38,7 @@
       const params = new URLSearchParams(window.location.search || "");
       return normalizeSurgeonParam(params.get("s"));
     }catch(e){
-      return "CALDERA";
+      return normalizeSurgeonParam(null);
     }
   }
 
@@ -71,15 +71,15 @@
   }
 
   function weekInfos(records){
-    const m = {};
+    const groups=new Map();
     records.forEach(r=>{
-      const w=+r.week;
-      if(!m[w]) m[w]=[];
-      m[w].push(r.date);
+      const key=window.AgendaModel.weekKey(r);
+      if(!groups.has(key))groups.set(key,{key,week:+r.week,dates:[]});
+      groups.get(key).dates.push(r.date);
     });
-    return Object.entries(m).map(([week,dates])=>{
+    return [...groups.values()].map(({key,week,dates})=>{
       const d=[...new Set(dates)].sort();
-      return {week:+week,min:d[0],max:d[d.length-1]};
+      return {key,week,min:d[0],max:d[d.length-1]};
     }).sort((a,b)=>a.min.localeCompare(b.min));
   }
 
@@ -93,12 +93,12 @@
 
   function activeWeek(records){
     const info=weekInfos(records);
-    if(!info.length) return 36;
+    if(!info.length) return null;
     const today=todayChile();
     const current=info.find(x=>x.min<=today && x.max>=today);
-    if(current) return current.week;
+    if(current) return current.key;
     const next=info.find(x=>x.min>today);
-    return (next || info[info.length-1]).week;
+    return (next || info[info.length-1]).key;
   }
 
   function visibleWeeks(records){
@@ -125,7 +125,7 @@
     const weeks=visibleWeeks(records);
     document.querySelectorAll(".week-tabs,.svc-week-tabs").forEach(x=>x.remove());
     if(weeks.length<2) return;
-    const html=weeks.map(w=>`<button type="button" class="week-tab ${+w.week===+active?"active":""}" data-week="${w.week}">${weekTabLabel(w)} · Semana ${w.week}</button>`).join("");
+    const html=weeks.map(w=>`<button type="button" class="week-tab ${w.key===active?"active":""}" data-week="${w.key}">${weekTabLabel(w)} · Semana ${w.week}</button>`).join("");
     const personalMeta=document.querySelector("#principal .hero .meta");
     if(personalMeta){
       const tabs=document.createElement("div");
@@ -142,17 +142,18 @@
     }
     document.querySelectorAll(".week-tab").forEach(btn=>{
       btn.onclick=()=>{
-        selectedWeek=Number(btn.dataset.week);
+        selectedWeek=btn.dataset.week;
         renderAgenda(records,selectedWeek);
       };
     });
   }
 
   function dateRangeLabel(records, week){
-    const d=[...new Set(records.filter(r=>+r.week===+week).map(r=>r.date))].sort();
-    if(!d.length) return `Semana ${week}`;
+    const d=[...new Set(records.filter(r=>window.AgendaModel.weekKey(r)===week).map(r=>r.date))].sort();
+    if(!d.length) return "Sin actividades";
+    const number=records.find(r=>window.AgendaModel.weekKey(r)===week)?.week;
     const fmt=x=>new Intl.DateTimeFormat("es-CL",{day:"numeric",month:"long",timeZone:"UTC"}).format(new Date(x+"T12:00:00Z"));
-    return `Semana ${week} · ${fmt(d[0])} al ${fmt(d[d.length-1])}`;
+    return `Semana ${number} · ${fmt(d[0])} al ${fmt(d[d.length-1])}`;
   }
 
   function badgeClass(cat){
@@ -201,8 +202,8 @@
     const pill=root.querySelector(".hero .meta .pill");
     if(pill) pill.textContent=dateRangeLabel(records,week);
 
-    const personalRows=records.filter(r=>+r.week===+week && r.surgeon.toUpperCase()===selectedSurgeon);
-    const allWeek=records.filter(r=>+r.week===+week);
+    const personalRows=records.filter(r=>window.AgendaModel.weekKey(r)===week && r.surgeon.toUpperCase()===selectedSurgeon);
+    const allWeek=records.filter(r=>window.AgendaModel.weekKey(r)===week);
     const dates=[...new Set(allWeek.map(r=>r.date))].sort();
     const daysRoot=root.querySelector(".days");
     if(daysRoot){
@@ -220,7 +221,7 @@
           <h3>${esc(day)} ${Number(date.slice(-2))}</h3>
           ${blocks || '<div class="detail">Sin actividad consignada</div>'}
         </div>`;
-      }).join("");
+      }).join("") || '<p class="detail">Sin actividades registradas.</p>';
     }
 
     const cards=root.querySelectorAll(".card");
@@ -257,11 +258,12 @@
   function renderService(records, week){
     const service=document.getElementById("servicio");
     if(!service) return;
-    const weekRows=records.filter(r=>+r.week===+week);
+    const weekRows=records.filter(r=>window.AgendaModel.weekKey(r)===week);
     const dates=[...new Set(weekRows.map(r=>r.date))].sort();
     const surgeons=[...new Set(weekRows.map(r=>r.surgeon))].sort((a,b)=>a.localeCompare(b));
     const today=todayChile();
-    let selectedDate=dates.includes(today) ? today : (dates[0] || null);
+    if(!dates.length){service.innerHTML='<div class="svc-wrap"><header class="svc-hero"><h1>Servicio completo</h1><p class="svc-none">Sin actividades registradas.</p></header></div>';return;}
+    let selectedDate=dates.includes(today) ? today : dates[0];
 
     service.innerHTML=`<div class="svc-wrap">
       <header class="svc-hero">
@@ -354,12 +356,14 @@
   }
 
   function renderAgenda(records, week){
-    const active=Number(week || selectedWeek || activeWeek(records));
+    const available=weekInfos(records);
+    const requested=week||selectedWeek;
+    const active=available.some(w=>w.key===requested)?requested:activeWeek(records);
     selectedWeek=active;
     renderPersonal(records,active);
     renderService(records,active);
     renderWeekTabs(records,active);
-    const conflicts=window.AgendaModel.findConflicts(records.filter(r=>+r.week===active));
+    const conflicts=window.AgendaModel.findConflicts(records.filter(r=>window.AgendaModel.weekKey(r)===active));
     let notice=document.getElementById('agenda-conflicts');
     if(!notice){notice=document.createElement('p');notice.id='agenda-conflicts';notice.setAttribute('role','status');document.getElementById('principal')?.prepend(notice);}
     notice.hidden=!conflicts.length;
@@ -368,11 +372,11 @@
 
   window.agendaLiveCallback=function(resp){
     try{
-      if(!resp || resp.status!=="ok" || !resp.table) return;
+      if(!resp || resp.status!=="ok" || !resp.table || !Array.isArray(resp.table.rows)) return false;
       const out=[];
       (resp.table.rows||[]).forEach(row=>{
         const c=row.c||[];
-        if(c.length<6 || c[0]?.v==null) return;
+        if(c.length<6 || c[0]?.v==null) throw new Error('Fila de agenda incompleta');
         out.push({
           week:Number(c[0]?.v||0),
           date:normalizeDate(c[1]?.v),
@@ -382,14 +386,15 @@
           activity:String(c[5]?.v||"")
         });
       });
-      if(!out.length) return;
-      if(out.some(r => !Number.isInteger(r.week) || !/^\d{4}-\d{2}-\d{2}$/.test(r.date))) return;
-      liveRecords=out;
+      if(!window.AgendaModel.validPayload({ok:true,records:out})) return false;
       renderAgenda(out,selectedWeek || activeWeek(out));
+      liveRecords=out;
       const status=document.getElementById("load-status");
       if(status) status.hidden=true;
+      return true;
     }catch(e){
       console.warn("Agenda: se mantiene el respaldo local.",e);
+      return false;
     }
   };
 
