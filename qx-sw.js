@@ -1,8 +1,15 @@
-const CACHE = 'agenda-qx-shell-v5';
+const CACHE = 'agenda-qx-shell-v6';
 const FILES = ["astudillo.html", "azua.html", "barraza.html", "boada.html", "qx.html", "dictter.html", "l-rodriguez.html", "m-alvarez.html", "m-rodriguez.html", "martinez.html", "miranda.html", "molina.html", "olivares.html", "oyarzun.html", "r-romero.html", "ramirez.html", "ramos.html", "rey.html", "romero.html", "salas.html", "tapia.html", "velasquez.html", "vicencio.html", "qx-offline.js?v=5", "qx-app.js?v=5", "qx-model.js?v=5", "qx.css?v=5", "qx-icon-180.png", "qx-icon-512.png", "astudillo.webmanifest", "azua.webmanifest", "barraza.webmanifest", "boada.webmanifest", "qx.webmanifest", "dictter.webmanifest", "l-rodriguez.webmanifest", "m-alvarez.webmanifest", "m-rodriguez.webmanifest", "martinez.webmanifest", "miranda.webmanifest", "molina.webmanifest", "olivares.webmanifest", "oyarzun.webmanifest", "r-romero.webmanifest", "ramirez.webmanifest", "ramos.webmanifest", "rey.webmanifest", "romero.webmanifest", "salas.webmanifest", "tapia.webmanifest", "velasquez.webmanifest", "vicencio.webmanifest"].map(path => new URL(path, self.registration.scope).href);
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(async cache => {
-    await cache.addAll(FILES.map(url => new Request(url,{cache:'reload'})));
+    const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+    const pages=new Set(clients.map(client=>FILES.find(file=>new URL(file).pathname===new URL(client.url).pathname))
+      .filter(file=>file&&new URL(file).pathname.endsWith('.html')));
+    if(!pages.size)pages.add(new URL('qx.html',self.registration.scope).href);
+    const required=FILES.filter(file=>/\/(qx-(?:app|model|offline)\.js|qx\.css)(?:\?|$)/.test(file));
+    for(const page of pages){required.push(page,page.replace(/\.html$/,'.webmanifest'));}
+    await cache.addAll(required.map(url=>new Request(url,{cache:'reload'})));
+    await Promise.all(FILES.filter(file=>/\.png$/.test(file)).map(url=>cache.add(url).catch(()=>null)));
     await self.skipWaiting();
   }));
 });
@@ -25,6 +32,8 @@ self.addEventListener('fetch', event => {
     const cache = await caches.open(CACHE);
     const cached = await cache.match(known);
     if (cached) return cached;
-    return fetch(event.request);
+    const response=await fetch(event.request);
+    if(response.ok&&!response.redirected)await cache.put(known,response.clone());
+    return response;
   })());
 });
