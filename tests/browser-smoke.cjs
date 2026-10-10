@@ -9,13 +9,22 @@ const fixturePage=(surgeon,manifest='qx.webmanifest')=>`<!doctype html><html lan
 const row=(surgeon,date='2026-10-12',week=42)=>({week,date,day:'Lunes',surgeon,category:'Sala',activity:'08:00-10:00'});
 (async()=>{
  const root=process.cwd(),types={'.js':'application/javascript','.css':'text/css','.png':'image/png'};
+ let payload={ok:true,records:[]};
  const server=http.createServer(async(req,res)=>{
   try{
    const pathname=new URL(req.url,'http://localhost').pathname;
+   if(pathname==='/synthetic-agenda'){res.setHeader('Content-Type','application/json; charset=utf-8');return res.end(JSON.stringify(payload));}
    if(pathname.endsWith('.html')){res.setHeader('Content-Type','text/html; charset=utf-8');return res.end(fixturePage(pathname==='/qx.html'?'SINTETICO_A':'SINTETICO_B',pathname.slice(1).replace('.html','.webmanifest')));}
    if(pathname.endsWith('.webmanifest')){res.setHeader('Content-Type','application/manifest+json; charset=utf-8');return res.end(JSON.stringify({id:pathname,start_url:pathname.replace('.webmanifest','.html'),scope:'./',name:'Agenda sintética',display:'standalone'}));}
    const file=path.resolve(root,'.'+pathname);if(!file.startsWith(root+path.sep))throw Error('path');
-   res.setHeader('Content-Type',(types[path.extname(file)]||'application/octet-stream')+(path.extname(file)==='.png'?'':'; charset=utf-8'));res.end(await fs.readFile(file));
+   res.setHeader('Content-Type',(types[path.extname(file)]||'application/octet-stream')+(path.extname(file)==='.png'?'':'; charset=utf-8'));let content=await fs.readFile(file);
+   if(pathname==='/qx-offline.js'){
+    const original=content.toString('utf8');
+    const offline=original.replace(/const endpoint = '[^']+';/, "const endpoint = '/synthetic-agenda';");
+    if(offline===original)throw Error('Synthetic endpoint substitution failed');
+    content=offline;
+   }
+   res.end(content);
   }catch{res.statusCode=404;res.end('Not found');}
  });
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
@@ -25,10 +34,9 @@ const row=(surgeon,date='2026-10-12',week=42)=>({week,date,day:'Lunes',surgeon,c
    const browser=await engine.launch({headless:true});
    try{
     const context=await browser.newContext(),page=await context.newPage(),errors=[];
-    let payload={ok:true,records:[row('SINTETICO_A'),row('SINTETICO_B')]};
-    await context.route('https://script.google.com/**',route=>route.fulfill({status:200,contentType:'application/json',
-     headers:{'access-control-allow-origin':'*'},body:JSON.stringify(payload)}));
-    await context.route('**/*',route=>{const url=new URL(route.request().url());return url.origin===origin||url.hostname==='script.google.com'?route.fallback():route.abort();});
+    payload={ok:true,records:[row('SINTETICO_A'),row('SINTETICO_B')]};
+    // The served reader uses a local fixture endpoint; service workers cannot bypass that boundary.
+    await context.route('**/*',route=>new URL(route.request().url()).origin===origin?route.continue():route.abort());
     page.on('pageerror',e=>errors.push(e.message));
     page.on('console',message=>console.log(engine.name()+': '+message.type()+': '+message.text()));
     const stage=async(label,operation)=>{try{await operation();console.log(engine.name()+': '+label+' passed');}catch(error){console.log(await page.evaluate(async()=>({title:document.querySelector('#principal .hero h1')?.textContent,ready:document.getElementById('offline-ready')?.textContent,status:document.getElementById('offline-status')?.textContent,online:navigator.onLine,recordCount:JSON.parse(localStorage.getItem('agenda-qx-records-v1')||'null')?.payload?.records?.length,controlled:!!navigator.serviceWorker.controller,keys:await caches.keys()})));throw new Error(label+': '+error.message+'; page errors: '+errors.join('; '));}};
