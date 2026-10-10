@@ -1,35 +1,53 @@
-const {chromium}=require('playwright');
+const {chromium,webkit}=require('playwright');
 const http=require('node:http'),fs=require('node:fs/promises'),path=require('node:path'),assert=require('node:assert/strict');
+const fixturePage=surgeon=>`<!doctype html><html lang="es" data-surgeon="${surgeon}"><head>
+<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="manifest" href="./qx.webmanifest">
+<link rel="stylesheet" href="./qx.css?v=5"></head><body>
+<div id="offline-status" hidden></div><span id="offline-ready"></span><button id="refresh-agenda">Actualizar</button><span id="load-status"></span>
+<section id="principal"><header class="hero"><h1></h1><div class="meta"><span class="pill"></span></div></header><div class="card"><div class="days"></div></div><div class="card"></div></section>
+<section id="servicio"></section><script src="./qx-model.js?v=5"></script><script src="./qx-app.js?v=5"></script><script src="./qx-offline.js?v=5"></script></body></html>`;
+const row=(surgeon,date='2026-10-12',week=42)=>({week,date,day:'Lunes',surgeon,category:'Sala',activity:'08:00-10:00'});
 (async()=>{
- const root=process.cwd();
- const types={'.html':'text/html','.js':'application/javascript','.css':'text/css','.webmanifest':'application/manifest+json','.png':'image/png'};
+ const root=process.cwd(),types={'.js':'application/javascript','.css':'text/css','.png':'image/png'};
  const server=http.createServer(async(req,res)=>{
-  try{const file=path.resolve(root,'.'+new URL(req.url,'http://localhost').pathname);
-   if(!file.startsWith(root+path.sep))throw Error('path');
+  try{
+   const pathname=new URL(req.url,'http://localhost').pathname;
+   if(pathname.endsWith('.html')){res.setHeader('Content-Type','text/html');return res.end(fixturePage(pathname==='/qx.html'?'SINTETICO_A':'SINTETICO_B'));}
+   if(pathname.endsWith('.webmanifest')){res.setHeader('Content-Type','application/manifest+json');return res.end(JSON.stringify({id:pathname,start_url:pathname.replace('.webmanifest','.html'),scope:'./',name:'Agenda sintética',display:'standalone'}));}
+   const file=path.resolve(root,'.'+pathname);if(!file.startsWith(root+path.sep))throw Error('path');
    res.setHeader('Content-Type',types[path.extname(file)]||'application/octet-stream');res.end(await fs.readFile(file));
   }catch{res.statusCode=404;res.end('Not found');}
  });
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const origin='http://127.0.0.1:'+server.address().port;
- const browser=await chromium.launch({headless:true});
  try{
-  const context=await browser.newContext(),page=await context.newPage(),errors=[];
-  page.on('pageerror',e=>errors.push(e.message));
-  page.on('console',m=>{if(m.type()==='error')console.log('Browser error:',m.text());});
-  page.on('requestfailed',r=>console.log('Request failed:',new URL(r.url()).hostname,r.failure()?.errorText));
-  page.on('response',r=>{if(r.url().includes('script.google'))console.log('Data response:',r.status(),r.headers()['content-type']);});
-  await page.goto(origin+'/qx.html');
-  await page.waitForFunction(()=>{try{return JSON.parse(localStorage.getItem('agenda-qx-records-v1')||'null')?.payload?.records?.length>0;}catch{return false;}},undefined,{timeout:45000});
-  await page.waitForFunction(()=>document.getElementById('offline-ready')?.textContent.includes('Disponible sin conexión'),undefined,{timeout:30000});
-  await page.evaluate(()=>navigator.serviceWorker.ready.then(()=>navigator.serviceWorker.controller?true:new Promise(resolve=>navigator.serviceWorker.addEventListener('controllerchange',()=>resolve(true),{once:true}))));
-  assert.deepEqual(errors,[]);
-  const count=await page.evaluate(()=>JSON.parse(localStorage.getItem('agenda-qx-records-v1')).payload.records.length);
-  console.log('Live agenda downloaded; record count:',count);
-  await context.setOffline(true);
-  await page.reload();
-  await page.waitForFunction(()=>document.getElementById('offline-status')?.textContent.includes('Sin conexión'));
-  assert.equal(await page.locator('script[src*="qx-model"]').count(),1);
-  console.log('Installed shell and saved agenda reopen offline.');
-  await context.close();
- }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
+  for(const engine of [chromium,webkit]){
+   const browser=await engine.launch({headless:true});
+   try{
+    const context=await browser.newContext(),page=await context.newPage(),errors=[];
+    let payload={ok:true,records:[row('SINTETICO_A'),row('SINTETICO_B')]};
+    await context.route('https://script.google.com/**',route=>route.fulfill({status:200,contentType:'application/json',
+     headers:{'access-control-allow-origin':'*'},body:JSON.stringify(payload)}));
+    await context.route('**/*',route=>{const url=new URL(route.request().url());return url.origin===origin||url.hostname==='script.google.com'?route.fallback():route.abort();});
+    page.on('pageerror',e=>errors.push(e.message));
+    await page.goto(origin+'/qx.html?s=SINTETICO_B');
+    await page.waitForFunction(()=>document.querySelector('#principal .hero h1')?.textContent.includes('Sintetico_a'));
+    await page.waitForFunction(()=>document.getElementById('offline-ready')?.textContent.includes('Disponible sin conexión'));
+    await page.evaluate(()=>navigator.serviceWorker.ready.then(()=>navigator.serviceWorker.controller?true:new Promise(resolve=>navigator.serviceWorker.addEventListener('controllerchange',()=>resolve(true),{once:true}))));
+    payload={ok:true,records:[]};
+    await page.locator('#refresh-agenda').click();
+    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('agenda-qx-records-v1')).payload.records.length===0);
+    assert.match(await page.locator('#principal .days').textContent(),/Sin actividades/);
+    payload={ok:true,records:[row('SINTETICO_A','2027-01-08',1)]};
+    await page.locator('#refresh-agenda').click();
+    await page.waitForFunction(()=>document.querySelector('#principal .day')?.dataset.date==='2027-01-08');
+    await context.setOffline(true);await page.reload();
+    await page.waitForFunction(()=>document.getElementById('offline-status')?.textContent.includes('Sin conexión'));
+    assert.equal(await page.locator('#principal .day').getAttribute('data-date'),'2027-01-08');
+    assert.deepEqual(errors,[]);
+    await context.close();
+    console.log(engine.name()+': fixtures, professional identity, empty agenda, replaced week and offline passed.');
+   }finally{await browser.close();}
+  }
+ }finally{await new Promise(resolve=>server.close(resolve));}
 })().catch(error=>{console.error(error.message);process.exitCode=1;});
