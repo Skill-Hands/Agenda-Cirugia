@@ -16,3 +16,9 @@ Evidencia: https://github.com/Skill-Hands/Agenda-Cirugia/actions/runs/3806265122
 Commit de código probado: c8f09564306869eb940c8349616c5f73e3d0f8ad.
 Una ejecución anterior de WebKit eludió la interceptación y consultó el endpoint real; no hizo escrituras. Se sustituyó el endpoint servido por uno local y la ejecución final utiliza solamente fixtures. No se ha modificado GitHub Pages ni AppDeploy.
 Reversión: revertir commits y avanzar el identificador de caché si fuera necesario distribuir la reversión.
+
+## Integración y segunda verificación — 2026-10-11
+Correcciones integradas mediante PR #4, commit 2e37f5bab65980a398be6a35e78d6d13da546edd.
+La CI del código integrado aprobó seis pruebas Node, sintaxis y Playwright Chromium/WebKit: https://github.com/Skill-Hands/Agenda-Cirugia/actions/runs/38103115281.
+GitHub Pages completó el despliegue: https://github.com/Skill-Hands/Agenda-Cirugia/actions/runs/38103114676.
+No se modificaron Google Sheets, Apps Script o AppDeploy. No se ha comprobado un dispositivo iPad físico.
