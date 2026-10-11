@@ -68,7 +68,15 @@
   window.agendaQxData = payload => {
     if (!valid(payload)) { failed(); return; }
     cleanup();
-    try { render(payload); } catch { failed(); return; }
+    // Una actualización idéntica no necesita reconstruir toda la agenda.
+    // Mantener la validación del payload y el timestamp de la copia guardada.
+    let unchanged = false;
+    if (saved?.payload) {
+      try { unchanged = JSON.stringify(saved.payload) === JSON.stringify(payload); } catch { unchanged = false; }
+    }
+    if (!unchanged) {
+      try { render(payload); } catch { failed(); return; }
+    }
     saved = {payload, savedAt: Date.now()};
     try {
       localStorage.setItem(KEY, JSON.stringify(saved));
