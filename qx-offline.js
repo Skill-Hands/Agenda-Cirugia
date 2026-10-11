@@ -15,7 +15,7 @@
   }
   async function checkShell() {
     try {
-      const cache = await caches.open('agenda-qx-shell-v5');
+      const cache = await caches.open('agenda-qx-shell-v6');
       const page = new URL(location.pathname, location.origin).href;
       const assets = [page, new URL('./qx-offline.js?v=5',location.href).href,
         new URL('./qx-icon-180.png',location.href).href,
@@ -26,11 +26,7 @@
       updateReady();
     } catch { shellFailed=true; updateReady(); }
   }
-  function valid(data) {
-    return data && data.ok && Array.isArray(data.records) && data.records.length &&
-      data.records.every(r => Number.isFinite(Number(r.week)) && /^\d{4}-\d{2}-\d{2}$/.test(r.date) &&
-        ['day','surgeon','category','activity'].every(k => typeof r[k] === 'string'));
-  }
+  function valid(data) { return window.AgendaModel.validPayload(data); }
   function show(text) { banner.textContent = text; banner.hidden = !text; }
   function storedMessage(prefix) {
     const old = saved && Date.now() - saved.savedAt > 24 * 60 * 60 * 1000;
@@ -38,16 +34,17 @@
       'Sin agenda guardada. Conéctate a internet para descargarla por primera vez.';
   }
   function render(data) {
-    window.agendaLiveCallback({status:'ok',table:{rows:data.records.map(r=>({
+    const rendered=window.agendaLiveCallback({status:'ok',table:{rows:data.records.map(r=>({
       c:[r.week,r.date,r.day,r.surgeon,r.category,r.activity].map(v=>({v}))
     }))}});
+    if(rendered!==true)throw new Error('No se pudo mostrar la agenda');
   }
   try {
     const cached = JSON.parse(localStorage.getItem(KEY));
     if (cached && valid(cached.payload) && Number.isFinite(cached.savedAt)) {
+      render(cached.payload);
       saved = cached;
       dataSaved = true;
-      render(saved.payload);
       show(storedMessage(navigator.onLine ? 'Copia guardada · Buscando actualización' : 'Sin conexión'));
     }
   } catch {}
@@ -71,7 +68,7 @@
   window.agendaQxData = payload => {
     if (!valid(payload)) { failed(); return; }
     cleanup();
-    render(payload);
+    try { render(payload); } catch { failed(); return; }
     saved = {payload, savedAt: Date.now()};
     try {
       localStorage.setItem(KEY, JSON.stringify(saved));

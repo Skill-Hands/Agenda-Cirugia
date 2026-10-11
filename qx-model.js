@@ -29,5 +29,22 @@
   }
   return conflicts;
  }
- return {escapeText,parsePayload,interval,findConflicts};
+ function validDate(value){
+   if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+   const d=new Date(value+'T12:00:00Z');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===value;
+  }
+  function validPayload(data){
+   return Boolean(data&&data.ok===true&&Array.isArray(data.records)&&data.records.every(r=>
+    r&&Number.isInteger(Number(r.week))&&Number(r.week)>=1&&Number(r.week)<=53&&validDate(r.date)&&
+    ['day','surgeon','category','activity'].every(k=>typeof r[k]==='string')));
+  }
+  function weekKey(record){
+   if(!validDate(record.date))throw new Error('Fecha de agenda inválida');
+   const d=new Date(record.date+'T12:00:00Z');d.setUTCDate(d.getUTCDate()-((d.getUTCDay()+6)%7));
+   return d.toISOString().slice(0,10);
+  }
+  function fixedSurgeon(declared,value){
+   return String(declared||value||'CALDERA').trim().toUpperCase()||'CALDERA';
+  }
+  return {escapeText,parsePayload,interval,findConflicts,validDate,validPayload,weekKey,fixedSurgeon};
 });
